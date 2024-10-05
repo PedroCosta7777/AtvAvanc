@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/relativeLayout"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#FFFFFF"> <!-- Cor de fundo branco -->
+
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Atividade Avaliativa - GAT108"
+        android:textSize="18sp"
+        android:layout_centerHorizontal="true"
+        android:layout_alignParentTop="true"
+        android:layout_marginTop="10dp"
+        android:textStyle="bold"
+        tools:ignore="HardcodedText" />
+
+    <EditText
+        android:id="@+id/editTextNumber"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="238dp"
+        android:layout_marginTop="389dp"
+        android:background="@android:color/background_light"
+        android:hint="Digite Aqui"
+        android:inputType="number"
+        android:minHeight="48dp"
+        android:padding="10dp"
+        tools:ignore="Autofill,HardcodedText" />
+
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Quantidade de Carros:"
+        android:textSize="18sp"
+        android:layout_marginStart="62dp"
+        android:layout_alignParentTop="true"
+        android:layout_marginTop="400dp"
+        android:textStyle="bold"
+        tools:ignore="HardcodedText,VisualLintOverlap" />
+
+
+    <ImageView
+        android:id="@+id/pista"
+        android:layout_width="400dp"
+        android:layout_height="400dp"
+        android:src="@drawable/pista1"
+        android:layout_alignParentTop="true"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="20dp"
+
+        tools:ignore="ContentDescription" />
+
+    <Button
+        android:id="@+id/button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Start"
+        android:layout_marginTop="450dp"
+        android:layout_marginLeft="20dp"
+        android:background="#0DAB13"
+        tools:ignore="HardcodedText,RtlHardcoded" />
+
+
+    <Button
+        android:id="@+id/button2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Pause"
+        android:layout_marginTop="520dp"
+        android:layout_marginLeft="20dp"
+        android:background="#C5B116"
+
+        tools:ignore="HardcodedText,RtlHardcoded" />
+
+    <Button
+        android:id="@+id/button3"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="20dp"
+        android:layout_marginTop="590dp"
+        android:background="#A90C0C"
+        android:text="Finish"
+        tools:ignore="HardcodedText,RtlHardcoded,TextContrastCheck" />
+
+    <ImageView
+        android:id="@+id/carImageView"
+        android:layout_width="25dp"
+        android:layout_height="40dp"
+        android:visibility="gone"
+        android:src="@drawable/carro" />
+
+</RelativeLayout>
