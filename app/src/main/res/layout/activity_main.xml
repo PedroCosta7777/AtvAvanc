@@ -6,7 +6,7 @@
     android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#FFFFFF"> <!-- Cor de fundo branco -->
+    android:background="#FFFFFF"> <!-- Cor de fundo bGGranco -->
 
     <TextView
         android:layout_width="wrap_content"
@@ -87,11 +87,5 @@
         android:text="Finish"
         tools:ignore="HardcodedText,RtlHardcoded,TextContrastCheck" />
 
-    <ImageView
-        android:id="@+id/carImageView"
-        android:layout_width="25dp"
-        android:layout_height="40dp"
-        android:visibility="gone"
-        android:src="@drawable/carro" />
 
 </RelativeLayout>

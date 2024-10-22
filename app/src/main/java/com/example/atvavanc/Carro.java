@@ -1,13 +1,24 @@
 package com.example.atvavanc;
 
-import java.util.HashMap;
-import java.util.Map;
+import static android.widget.Toast.LENGTH_SHORT;
+
+import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Color;
+import android.graphics.Point;
 
+import android.util.Log;
+import android.util.Pair;
+import android.view.inputmethod.InsertGesture;
+import android.widget.Toast;
+
+import java.util.HashMap;
+import java.util.Map;
 
 public class Carro {
+    private int angulo;
     private String name;
+    private int idCarro; // Declare aqui
     private int x;
     private int y;
     private int fuelTank;
@@ -17,122 +28,93 @@ public class Carro {
     private int penalty;
     private Map<Integer, Integer> sensor;
 
+
     // Construtor
-    public Carro(String name) {
+    public Carro(String name, Integer IdCarro, Integer x, Integer y) {
+        this.angulo = 0;
         this.name = name;
-        this.x = 0;
-        this.y = 0;
+        this.x = x;
+        this.y = y;
         this.fuelTank = 100; // valor padrão
         this.speed = 0.0;
         this.laps = 0;
-        this.distance = distance;
+        this.distance = 10;
         this.penalty = 0;
         this.sensor = new HashMap<>();
+        sensor.put(0,-30);
+        sensor.put(1,30);
+        this.idCarro = idCarro;
     }
 
-    // Métodos getters e setters
+    void andar(int d) {
+        double dx =  d * Math.cos(Math.toRadians(angulo));
+        double dy =  d * Math.sin(Math.toRadians(angulo));
 
-    public String getName() {
-        return name;
+        x += (int) dx;
+        y += (int) dy;
     }
 
-    public void setName(String name) {
-        this.name = name;
-    }
 
     public int getX() {
-
         return x;
     }
 
-    public void setX(int x) {
-        this.x = x;
-    }
 
     public int getY() {
         return y;
     }
 
-    public void setY(int y) {
-        this.y = y;
+
+    public Map<Integer, Integer> getSensor() {
+        return sensor;
     }
 
-    public int getFuelTank() {
-        return fuelTank;
+    public void virar (int angulo){
+        this.angulo = this.angulo + angulo;
+
     }
 
-    public void setFuelTank(int fuelTank) {
-        this.fuelTank = fuelTank;
+    public Pair<Integer, Integer> getSensorPoint(int n) {
+        Integer ang = sensor.get(n);
+        if (ang != null) {
+            float deltaX = (float) (150 * Math.sin(Math.toRadians(angulo + ang)));
+            float deltaY = (float) (150 * Math.cos(Math.toRadians(angulo + ang)));
+
+            int _x = (int) (x + deltaX);
+            int _y = (int) (y - deltaY);
+            return new Pair<>(_x, _y);
+        }
+        return null;
     }
 
-    public double getSpeed() {
-        return speed;
+    public void andarFrente(int distancia){
+        float deltaX = (float) (distancia * Math.sin(Math.toRadians(angulo)));
+        float deltaY = (float) (distancia * Math.cos(Math.toRadians(angulo)));
+
+        x = (int) (x + deltaX);
+        y = (int) (y - deltaY);
     }
 
-    public void setSpeed(double speed) {
-        this.speed = speed;
+    public int getAngulo() {
+        return angulo;
     }
 
-    public int getLaps() {
-        return laps;
-    }
+    public void checkSensor(Bitmap pistaBitmap) {
 
-    public void setLaps(int laps) {
-        this.laps = laps;
-    }
+        Pair<Integer, Integer> p0 = getSensorPoint(0);
+        Pair<Integer, Integer> p1 = getSensorPoint(1);
 
-    public int getDistance() {
-        return distance;
-    }
+        // Verifica a cor do pixel nos pontos dos sensores
+        int c0 = pistaBitmap.getPixel(p0.first, p0.second);
+        int c1 = pistaBitmap.getPixel(p1.first, p1.second);
 
-    public void setDistance(int distance) {
-        this.distance = distance;
-    }
+        Log.d("COLOR", "c0 = " + c0);
+        Log.d("COLOR", "c1 = " + c1);
 
-    public int getPenalty() {
-        return penalty;
-    }
-
-    public void setPenalty(int penalty) {
-        this.penalty = penalty;
-    }
-
-    public void updateSensors(Bitmap pistaBitmap) {
-        // Limpa o sensor anterior
-        sensor.clear();
-
-        // Direções em que os sensores vão operar (e.g., 8 direções: 0°, 45°, 90°, etc.)
-        int[] dx = {0, distance, distance, distance, 0, -distance, -distance, -distance};
-        int[] dy = {-distance, -distance, 0, distance, distance, distance, 0, -distance};
-
-        // Para cada direção, faz a leitura da cor do pixel
-        for (int i = 0; i < dx.length; i++) {
-            int sensorX = x + dx[i];
-            int sensorY = y + dy[i];
-
-            // Garante que a posição do sensor está dentro dos limites da pista
-            if (sensorX >= 0 && sensorX < pistaBitmap.getWidth() && sensorY >= 0 && sensorY < pistaBitmap.getHeight()) {
-                int pixelColor = pistaBitmap.getPixel(sensorX, sensorY);
-
-                // Identifica se a cor do pixel representa uma colisão (por exemplo, se for uma cor preta)
-                if (isCollisionColor(pixelColor)) {
-                    // Se houver uma colisão, a distância medida é menor
-                    sensor.put(i + 1, distance - 3); // Por exemplo, se a colisão estiver a 3 unidades de distância
-                } else {
-                    // Caso contrário, não há obstáculo, então a distância é máxima
-                    sensor.put(i + 1, distance);
-                }
-            } else {
-                // Fora dos limites da pista, considera como colisão
-                sensor.put(i + 1, 0); // 0 significa colisão
-            }
+        if (c1 != -1) {
+            virar(-5);
+        } else if (c0 != -1) {
+            virar(5);
         }
     }
-
-    // Função para determinar se a cor do pixel indica colisão
-    private boolean isCollisionColor(int color) {
-        // Aqui estamos assumindo que a cor preta (RGB = 0, 0, 0) indica um obstáculo/colisão
-        return color == Color.BLACK;
-    }
-
 }
