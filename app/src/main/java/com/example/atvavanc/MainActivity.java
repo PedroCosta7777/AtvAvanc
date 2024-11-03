@@ -155,6 +155,8 @@ public class MainActivity extends AppCompatActivity implements MainToCar {
         });
 
         clearButton.setOnClickListener( v -> {
+            listaDeCarros.clear();
+            pista.setImageBitmap(pistaBitmap);
             Database.getInstance().LimparCarros();
         });
 
@@ -219,7 +221,6 @@ public class MainActivity extends AppCompatActivity implements MainToCar {
         for (Carro c : listaDeCarros) {
             try {
                 c.stopCar();
-                c.join();
             } catch (Exception e) {
                 Log.d("Exeption", e.toString());
             }
@@ -239,7 +240,6 @@ public class MainActivity extends AppCompatActivity implements MainToCar {
     }
 
     private void finishRace() {
-        pista.setImageBitmap(pistaBitmap);
         onPause(); // Para o movimento dos carros
         editTextNumber.setText(""); // Limpa o campo de entrada para novo valor
         Toast.makeText(this, "Corrida finalizada! Insira um novo número.", Toast.LENGTH_SHORT).show();

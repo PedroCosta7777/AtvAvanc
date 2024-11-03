@@ -5,11 +5,17 @@ import java.util.Map;
 public class SafetyCar extends Carro {
     public SafetyCar(String name, Integer idCarro, Integer x, Integer y) {
         super(name, idCarro, x, y);
-        setPriority(2);
     }
 
     public SafetyCar(Map<String, Object> dados) throws Exception {
         super(dados);
-        setPriority(2);
     }
+
+    @Override
+    public void start() {
+        thread = new Thread(this);
+        thread.setPriority(2);
+        thread.start();
+    }
+
 }

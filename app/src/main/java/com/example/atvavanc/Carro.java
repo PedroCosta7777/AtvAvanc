@@ -11,7 +11,7 @@ import com.example.automath.interfaces.MainToCar;
 import java.util.HashMap;
 import java.util.Map;
 
-public class Carro extends Thread {
+public class Carro implements Runnable {
     private String name;
     private int idCarro;
     private int fuelTank;
@@ -25,6 +25,7 @@ public class Carro extends Thread {
     private int y;
     private final Map<Integer, Integer> sensor;
     private boolean running = false;
+    protected Thread thread;
 
     private MainToCar main;
 
@@ -48,7 +49,6 @@ public class Carro extends Thread {
         sensor.put(-3, 30);
         sensor.put(-2, 60);
         sensor.put(-1, 90);
-        setPriority(1);
     }
 
     public Carro(Map<String, Object> dados) throws Exception{
@@ -75,7 +75,6 @@ public class Carro extends Thread {
         sensor.put(-3, 30);
         sensor.put(-2, 60);
         sensor.put(-1, 90);
-        setPriority(1);
     }
 
     public Map<String, Object> toMap() {
@@ -152,7 +151,18 @@ public class Carro extends Thread {
     }
 
     public void stopCar() {
-        running = false;
+        try {
+            running = false;
+            thread.join();
+        } catch (Exception e) {
+            Log.d("EXCEPTION", e.toString());
+        }
+    }
+
+    public void start() {
+        thread = new Thread(this);
+        thread.setPriority(1);
+        thread.start();
     }
 
     @Override
