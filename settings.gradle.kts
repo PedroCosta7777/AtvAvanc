@@ -21,3 +21,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "atvAvanc"
 include(":app")
+include(":app:automath")
+include(":app:database")

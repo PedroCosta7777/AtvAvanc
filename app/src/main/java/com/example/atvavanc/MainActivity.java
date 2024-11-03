@@ -1,49 +1,47 @@
 package com.example.atvavanc;
 
-import android.animation.ObjectAnimator;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
-import android.graphics.Point;
 import android.graphics.Rect;
-import android.hardware.Sensor;
 import android.os.Bundle;
 import android.os.Handler;
-import android.provider.ContactsContract;
 import android.util.Log;
 import android.util.Pair;
 import android.view.View;
-import android.view.animation.LinearInterpolator;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
-import android.widget.RelativeLayout;
+import android.widget.ProgressBar;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
-import com.example.atvavanc.Carro;
+import com.example.automath.Constants;
+import com.example.automath.interfaces.MainToCar;
+import com.example.database.Database;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
 import java.util.List;
 import java.util.ArrayList;
-import java.util.Map;
+import java.util.concurrent.Semaphore;
+import java.util.stream.Collectors;
 
-
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements MainToCar {
 
     private ImageView pista;
     private EditText editTextNumber;
-    private Button startButton, pauseButton, finishButton;
-    private RelativeLayout relativeLayout;
+    private Button startButton, pauseButton, finishButton, clearButton;
+    private ProgressBar progressbar;
     private List<Carro> listaDeCarros;
-    private List<ImageView> listaDeCarrosViews;
     private Handler handler;
     private Runnable moveCarsRunnable;
     private boolean isMoving;
-    private ImageView sensor2, sensor3;
 
     private Bitmap pistaBitmap; // Bitmap da pista
+    private Bitmap dataBitmap;
     private Bitmap carroBmp; // Bitmap da pista
 
+    Semaphore semaforo = new Semaphore(1);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,16 +49,14 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main); // Verifique se o nome do seu layout está correto
 
         editTextNumber = findViewById(R.id.editTextNumber);
-        relativeLayout = findViewById(R.id.relativeLayout);
         pista = findViewById(R.id.pista); // Certifique-se de ter a referência da pista
 
         // Inicializar as listas
         listaDeCarros = new ArrayList<>();
-        listaDeCarrosViews = new ArrayList<>();
-
 
         // Carregar a imagem da pista como Bitmap
         pistaBitmap = BitmapFactory.decodeResource(getResources(), R.drawable.pista1);
+        dataBitmap = pistaBitmap.copy(pistaBitmap.getConfig(), true);
         carroBmp = BitmapFactory.decodeResource(getResources(), R.drawable.carro);
         pista.setImageBitmap(pistaBitmap);
 
@@ -68,27 +64,78 @@ public class MainActivity extends AppCompatActivity {
         startButton = findViewById(R.id.button);
         pauseButton = findViewById(R.id.button2);
         finishButton = findViewById(R.id.button3);
+        clearButton = findViewById(R.id.button4);
+        progressbar = findViewById(R.id.progress);
 
         funcaoBotoes();
+        buscaCarrosBanco();
+    }
+
+    private void loading(boolean active) {
+        finishButton.setEnabled(!active);
+        startButton.setEnabled(!active);
+        pauseButton.setEnabled(!active);
+        clearButton.setEnabled(!active);
+        if (active)
+            progressbar.setVisibility(View.VISIBLE);
+        else
+            progressbar.setVisibility(View.GONE);
+    }
+
+    private void buscaCarrosBanco() {
+        loading(true);
+        Database.getInstance().BuscarCarros()
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful()) {
+                        for (QueryDocumentSnapshot document : task.getResult()) {
+                            Log.d("DATABASE", document.getId() + " => " + document.getData());
+                            try {
+                                Carro car;
+                                if (document.getData().get("name").equals("SafetyCar"))
+                                    car = new SafetyCar(document.getData());
+                                else
+                                    car = new Carro(document.getData());
+                                car.setMain(this);
+                                listaDeCarros.add(car);
+                            } catch (Exception e) {
+                                Log.d("CRIAR CARROS", e.getMessage());
+                            }
+                        }
+                        loading(false);
+                        PaintCars();
+                    } else {
+                        Log.d("DATABASE", "Error getting documents: ", task.getException());
+                    }
+                });
     }
 
     private void PaintCars() {
         Bitmap bitmap = pistaBitmap.copy(pistaBitmap.getConfig(), true);
+        dataBitmap =  pistaBitmap.copy(pistaBitmap.getConfig(), true);
         Bitmap car = carroBmp.copy(carroBmp.getConfig(), true);
 
         Canvas canvas = new Canvas(bitmap);
+        Canvas dataCanvas = new Canvas(dataBitmap);
         Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        paint.setColor(Color.RED);
+
         for (Carro c : listaDeCarros) {
-            Rect r = new Rect(c.getX() - 40, c.getY() - 50, c.getX() + 40, c.getY() + 50);
+            Rect rect  = c.getRect();
+            paint.setColor(Color.BLACK);
 
             canvas.rotate(c.getAngulo(), c.getX(), c.getY());
-            canvas.drawBitmap(car, null, r, paint);
+            canvas.drawBitmap(car, null, rect, paint);
             canvas.rotate(-c.getAngulo(), c.getX(), c.getY());
 
+            dataCanvas.rotate(c.getAngulo(), c.getX(), c.getY());
+            dataCanvas.drawRect(rect, paint);
+            dataCanvas.rotate(-c.getAngulo(), c.getX(), c.getY());
+
+            paint.setColor(Color.RED);
+            paint.setStrokeWidth(2);
             for (Integer s : c.getSensor().keySet()) {
                 Pair<Integer, Integer> pos = c.getSensorPoint(s);
-                canvas.drawCircle(pos.first, pos.second, 15, paint);
+                if (pos != null)
+                    canvas.drawLine(c.getX(), c.getY(), pos.first, pos.second, paint);
             }
         }
         pista.setImageBitmap(bitmap);
@@ -97,13 +144,18 @@ public class MainActivity extends AppCompatActivity {
 
     private void funcaoBotoes(){
         startButton.setOnClickListener(v -> {
-            addCars();
+            if (listaDeCarros.isEmpty())
+                addCars();
             startCarMovement();
         });
 
         // Botão Pause
         pauseButton.setOnClickListener(v -> {
             onPause(); // Pausa o movimento dos carros
+        });
+
+        clearButton.setOnClickListener( v -> {
+            Database.getInstance().LimparCarros();
         });
 
         // Botão Finish
@@ -122,11 +174,17 @@ public class MainActivity extends AppCompatActivity {
         if (!numberStr.isEmpty()) {
             int numberOfCars = Integer.parseInt(numberStr);
             listaDeCarros.clear();
+
+            SafetyCar safety = new SafetyCar("SafetyCar", 0, (int)(pistaBitmap.getWidth() * 0.82), pistaBitmap.getHeight() / 2 - 150);
+            safety.setMain(this);
+            listaDeCarros.add(safety);
+
             int mid_y = pistaBitmap.getHeight() / 2;
             int mid_x = (int)(pistaBitmap.getWidth() * 0.80);
 
             for (int i = 0; i < numberOfCars; i++) {
-                Carro novoCarro = new Carro("Carro " + (i + 1), i+1, mid_x, mid_y + i*200);
+                Carro novoCarro = new Carro("Carro " + (i + 1), i+1, mid_x + i*(Constants.width + 40), mid_y);
+                novoCarro.setMain(this);
                 listaDeCarros.add(novoCarro);
             }
         } else {
@@ -137,15 +195,14 @@ public class MainActivity extends AppCompatActivity {
     private void startCarMovement() {
         isMoving = true; // inicializa os movimentos
 
+        for (Carro car : listaDeCarros) {
+            car.start();
+        }
+
         moveCarsRunnable = new Runnable() {
             @Override
             public void run() {
-                for (Carro carro : listaDeCarros) {
-                    carro.checkSensor(pistaBitmap);
-                    carro.andarFrente(10);
-                }
                 PaintCars();
-
                 if (isMoving) {
                     handler.postDelayed(this, 100); // Atualiza a posição a cada 100ms
                 }
@@ -153,19 +210,37 @@ public class MainActivity extends AppCompatActivity {
         };
         handler.post(moveCarsRunnable);
     }
+
     @Override
     protected void onPause() {
         super.onPause();
         isMoving = false; // Para o movimento
         handler.removeCallbacks(moveCarsRunnable); // Remove as atualizações
+        for (Carro c : listaDeCarros) {
+            try {
+                c.stopCar();
+                c.join();
+            } catch (Exception e) {
+                Log.d("Exeption", e.toString());
+            }
+        }
+        ;
+        Database.getInstance().SalvarCarros(listaDeCarros.stream().map(Carro::toMap).collect(Collectors.toList()));
     }
 
+    @Override
+    public Semaphore getSemaforo() {
+        return semaforo;
+    }
+
+    @Override
+    public Bitmap getPista() {
+        return dataBitmap;
+    }
 
     private void finishRace() {
         pista.setImageBitmap(pistaBitmap);
         onPause(); // Para o movimento dos carros
-        relativeLayout.removeViews(7, relativeLayout.getChildCount() - 7); // Remove carros anteriores, se houver
-        listaDeCarrosViews.clear(); // Limpa a lista de carros
         editTextNumber.setText(""); // Limpa o campo de entrada para novo valor
         Toast.makeText(this, "Corrida finalizada! Insira um novo número.", Toast.LENGTH_SHORT).show();
     }

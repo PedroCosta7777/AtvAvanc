@@ -1,36 +1,35 @@
 package com.example.atvavanc;
 
-import static android.widget.Toast.LENGTH_SHORT;
-
-import android.content.Context;
 import android.graphics.Bitmap;
-import android.graphics.Color;
-import android.graphics.Point;
-
+import android.graphics.Rect;
 import android.util.Log;
 import android.util.Pair;
-import android.view.inputmethod.InsertGesture;
-import android.widget.Toast;
+import com.example.automath.Constants;
+import com.example.automath.Mathematics;
+import com.example.automath.interfaces.MainToCar;
 
 import java.util.HashMap;
 import java.util.Map;
 
-public class Carro {
-    private int angulo;
+public class Carro extends Thread {
     private String name;
-    private int idCarro; // Declare aqui
-    private int x;
-    private int y;
+    private int idCarro;
     private int fuelTank;
     private double speed;
     private int laps;
     private int distance;
     private int penalty;
-    private Map<Integer, Integer> sensor;
 
+    private int angulo;
+    private int x;
+    private int y;
+    private final Map<Integer, Integer> sensor;
+    private boolean running = false;
+
+    private MainToCar main;
 
     // Construtor
-    public Carro(String name, Integer IdCarro, Integer x, Integer y) {
+    public Carro(String name, Integer idCarro, Integer x, Integer y) {
         this.angulo = 0;
         this.name = name;
         this.x = x;
@@ -41,33 +40,76 @@ public class Carro {
         this.distance = 10;
         this.penalty = 0;
         this.sensor = new HashMap<>();
-        sensor.put(0,-30);
-        sensor.put(1,30);
         this.idCarro = idCarro;
+
+        sensor.put(1, -90);
+        sensor.put(2, -60);
+        sensor.put(3, -30);
+        sensor.put(-3, 30);
+        sensor.put(-2, 60);
+        sensor.put(-1, 90);
+        setPriority(1);
     }
 
-    void andar(int d) {
-        double dx =  d * Math.cos(Math.toRadians(angulo));
-        double dy =  d * Math.sin(Math.toRadians(angulo));
+    public Carro(Map<String, Object> dados) throws Exception{
+        try {
+            this.angulo = ((Long) dados.get("angulo")).intValue();
+            this.name = (String) dados.get("name");
+            this.x = ((Long) dados.get("x")).intValue();
+            this.y = ((Long)dados.get("y")).intValue();
+            this.fuelTank = ((Long)dados.get("fuelTank")).intValue();
+            this.speed = (double) dados.get("speed");
+            this.laps = ((Long)dados.get("laps")).intValue();
+            this.distance = ((Long)dados.get("distance")).intValue();
+            this.penalty = ((Long)dados.get("penalty")).intValue();
+            this.idCarro = ((Long)dados.get("idCarro")).intValue();
+        } catch (Exception e) {
+            Log.d("CRIAR CARROS", e.toString());
+            throw new Exception("FALHA AO CONVERTER DADOS DO CARRO");
+        }
 
-        x += (int) dx;
-        y += (int) dy;
+        this.sensor = new HashMap<>();
+        sensor.put(1, -90);
+        sensor.put(2, -60);
+        sensor.put(3, -30);
+        sensor.put(-3, 30);
+        sensor.put(-2, 60);
+        sensor.put(-1, 90);
+        setPriority(1);
     }
 
-
-    public int getX() {
-        return x;
+    public Map<String, Object> toMap() {
+        Map<String, Object> map = new HashMap<>();
+        map.put("name", name);
+        map.put("fuelTank", fuelTank);
+        map.put("idCarro", idCarro);
+        map.put("angulo", angulo);
+        map.put("x", x);
+        map.put("y", y);
+        map.put("speed", speed);
+        map.put("laps", laps);
+        map.put("distance", distance);
+        map.put("penalty", penalty);
+        return map;
     }
 
-
-    public int getY() {
-        return y;
+    public void setMain(MainToCar main) {
+        this.main = main;
     }
 
-
-    public Map<Integer, Integer> getSensor() {
-        return sensor;
+    public Rect getRect() {
+        int width = Constants.width;
+        int height = Constants.height;
+        return new Rect(getX() - (width / 2), getY() - (height / 2), getX() + (width / 2), getY() + (height / 2));
     }
+
+    public int getX() { return x; }
+
+
+    public int getY() { return y; }
+
+
+    public Map<Integer, Integer> getSensor() { return sensor; }
 
     public void virar (int angulo){
         this.angulo = this.angulo + angulo;
@@ -76,23 +118,23 @@ public class Carro {
 
     public Pair<Integer, Integer> getSensorPoint(int n) {
         Integer ang = sensor.get(n);
+        int radius = Constants.radius;
         if (ang != null) {
-            float deltaX = (float) (150 * Math.sin(Math.toRadians(angulo + ang)));
-            float deltaY = (float) (150 * Math.cos(Math.toRadians(angulo + ang)));
-
-            int _x = (int) (x + deltaX);
-            int _y = (int) (y - deltaY);
-            return new Pair<>(_x, _y);
+            return Mathematics.getPoint(x, y, angulo, ang, radius);
         }
         return null;
     }
 
     public void andarFrente(int distancia){
-        float deltaX = (float) (distancia * Math.sin(Math.toRadians(angulo)));
-        float deltaY = (float) (distancia * Math.cos(Math.toRadians(angulo)));
+        Pair<Integer, Integer> p = Mathematics.getPoint(x, y, angulo, 0, distancia);
+        x = p.first;
+        y = p.second;
+    }
 
-        x = (int) (x + deltaX);
-        y = (int) (y - deltaY);
+    private boolean estaNoSemaforo() {
+        Rect r = getRect();
+        int x_semaforo = main.getPista().getWidth() / 2;
+        return (y < (main.getPista().getHeight() / 2)) && (r.left <= x_semaforo && r.right+30 >= x_semaforo);
     }
 
     public int getAngulo() {
@@ -100,21 +142,42 @@ public class Carro {
     }
 
     public void checkSensor(Bitmap pistaBitmap) {
+        for (Map.Entry<Integer, Integer> entry : sensor.entrySet()) {
+            Pair<Integer, Integer> p = getSensorPoint(entry.getKey());
+            int c = pistaBitmap.getPixel(p.first, p.second);
+            if (c != -1) {
+                virar(entry.getKey() * 2);
+            }
+        }
+    }
 
-        Pair<Integer, Integer> p0 = getSensorPoint(0);
-        Pair<Integer, Integer> p1 = getSensorPoint(1);
+    public void stopCar() {
+        running = false;
+    }
 
-        // Verifica a cor do pixel nos pontos dos sensores
-        int c0 = pistaBitmap.getPixel(p0.first, p0.second);
-        int c1 = pistaBitmap.getPixel(p1.first, p1.second);
+    @Override
+    public void run() {
+        running = true;
 
-        Log.d("COLOR", "c0 = " + c0);
-        Log.d("COLOR", "c1 = " + c1);
+        while (running) {
+            try {
+                if (estaNoSemaforo()) {
+                    main.getSemaforo().acquire();
+                    // repete o andar até passar o semaforo e depois libera ele
+                    while (estaNoSemaforo()) {
+                        checkSensor(main.getPista());
+                        andarFrente(10);
+                        Thread.sleep(100);
+                    }
+                    main.getSemaforo().release();
+                }
 
-        if (c1 != -1) {
-            virar(-5);
-        } else if (c0 != -1) {
-            virar(5);
+                checkSensor(main.getPista());
+                andarFrente(10);
+                Thread.sleep(100);
+            } catch (Exception e) {
+                Log.d("EXCEPTION", e.toString());
+            }
         }
     }
 }

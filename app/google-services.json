@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "477105108948",
+    "project_id": "atvavanc",
+    "storage_bucket": "atvavanc.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:477105108948:android:65048658521fd5141e8841",
+        "android_client_info": {
+          "package_name": "com.example.atvavanc"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB_CZZ7KvrGsyDl-Pn6qQgM01TsqRhsaQk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
