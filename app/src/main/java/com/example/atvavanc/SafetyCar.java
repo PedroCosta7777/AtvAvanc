@@ -10,11 +10,10 @@ public class SafetyCar extends Carro {
     public SafetyCar(Map<String, Object> dados) throws Exception {
         super(dados);
     }
-
     @Override
     public void start() {
         thread = new Thread(this);
-        thread.setPriority(2);
+        thread.setPriority(10);
         thread.start();
     }
 

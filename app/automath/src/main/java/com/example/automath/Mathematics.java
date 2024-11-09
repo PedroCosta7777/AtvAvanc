@@ -21,7 +21,6 @@ public class Mathematics {
     @NonNull
     @TestOnly
     public static Integer getPointX(int x, int angle, int d_angle, int distance) {
-        // POR ALGUMA RAZAO O TESTE NAO ACEITOU O USO DO PAIR
         float deltaX = (float) (distance * Math.sin(Math.toRadians(angle + d_angle)));
         return (int) (x + deltaX);
     }
@@ -29,7 +28,6 @@ public class Mathematics {
     @NonNull
     @TestOnly
     public static Integer getPointY(int y, int angle, int d_angle, int distance) {
-        // POR ALGUMA RAZAO O TESTE NAO ACEITOU O USO DO PAIR
         float deltaY = (float) (distance * Math.cos(Math.toRadians(angle + d_angle)));
         return (int) (y - deltaY);
     }
