@@ -226,7 +226,7 @@ public class MainActivity extends AppCompatActivity implements MainToCar {
             }
         }
         ;
-        Database.getInstance().SalvarCarros(listaDeCarros.stream().map(Carro::toMap).collect(Collectors.toList()));
+
     }
 
     @Override
