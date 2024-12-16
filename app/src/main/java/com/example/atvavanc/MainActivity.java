@@ -21,10 +21,17 @@ import com.example.automath.Constants;
 import com.example.automath.interfaces.MainToCar;
 import com.example.database.Database;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
+import java.util.HashMap;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.concurrent.Semaphore;
 import java.util.stream.Collectors;
+import android.os.SystemClock;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import com.example.escalonamento.Tarefas_Escalonamento;
+
 
 public class MainActivity extends AppCompatActivity implements MainToCar {
 
@@ -36,6 +43,9 @@ public class MainActivity extends AppCompatActivity implements MainToCar {
     private Handler handler;
     private Runnable moveCarsRunnable;
     private boolean isMoving;
+    private long startTime;
+    private long accumulatedTime = 0;
+
 
     private Bitmap pistaBitmap; // Bitmap da pista
     private Bitmap dataBitmap;
@@ -69,6 +79,18 @@ public class MainActivity extends AppCompatActivity implements MainToCar {
 
         funcaoBotoes();
         buscaCarrosBanco();
+
+        //Averiguar a lei de Amdahl na prática
+        double speedUp = AmdahlLaw.calculateSpeedUp(0.8, 8);
+        Log.d("speedUp", "Ganho de velocidade com f = 0.8 e N = 8: " + speedUp);
+        speedUp = AmdahlLaw.calculateSpeedUp(0.8, 1);
+        Log.d("speedUp", "Ganho de velocidade com f = 0.8 e N = 1: " + speedUp);
+        speedUp = AmdahlLaw.calculateSpeedUp(0.8, 4);
+        Log.d("speedUp", "Ganho de velocidade com f = 0.8 e N = 4: " + speedUp);
+
+        int numThreads = 1;//Runtime.getRuntime().availableProcessors(); // qtd processadores disponíveis
+        ExecutorService executor = Executors.newFixedThreadPool(numThreads); // qtd a ser usados
+        Log.d("numThreads", "Numero de threads: " + numThreads);
     }
 
     private void loading(boolean active) {
@@ -83,6 +105,7 @@ public class MainActivity extends AppCompatActivity implements MainToCar {
     }
 
     private void buscaCarrosBanco() {
+
         loading(true);
         Database.getInstance().BuscarCarros()
                 .addOnCompleteListener(task -> {
@@ -110,6 +133,9 @@ public class MainActivity extends AppCompatActivity implements MainToCar {
     }
 
     private void PaintCars() {
+        long startTimeT5 = System.currentTimeMillis();
+
+
         Bitmap bitmap = pistaBitmap.copy(pistaBitmap.getConfig(), true);
         dataBitmap =  pistaBitmap.copy(pistaBitmap.getConfig(), true);
         Bitmap car = carroBmp.copy(carroBmp.getConfig(), true);
@@ -139,19 +165,33 @@ public class MainActivity extends AppCompatActivity implements MainToCar {
             }
         }
         pista.setImageBitmap(bitmap);
+
+        // Marca o fim do tempo
+        long endTimeT5 = System.currentTimeMillis();
+        long elapsedTimeT5 = endTimeT5 - startTimeT5;
+
+        Tarefas_Escalonamento.adicionarTarefa(5, elapsedTimeT5, Tarefas_Escalonamento.tarefas.size()+1);
+
+        // Log do tempo total
+        Log.d("TEMPO_EXECUCAO T5", "Tempo de execução T5: " + elapsedTimeT5 + " ms");
+
+
     }
 
 
     private void funcaoBotoes(){
+
         startButton.setOnClickListener(v -> {
             if (listaDeCarros.isEmpty())
                 addCars();
+            // Log do tempo total
             startCarMovement();
         });
 
         // Botão Pause
         pauseButton.setOnClickListener(v -> {
             onPause(); // Pausa o movimento dos carros
+            Tarefas_Escalonamento.verificarEscalonabilidade();
         });
 
         clearButton.setOnClickListener( v -> {
@@ -177,15 +217,27 @@ public class MainActivity extends AppCompatActivity implements MainToCar {
             int numberOfCars = Integer.parseInt(numberStr);
             listaDeCarros.clear();
 
-            SafetyCar safety = new SafetyCar("SafetyCar", 0, (int)(pistaBitmap.getWidth() * 0.82), pistaBitmap.getHeight() / 2 - 150);
+            SafetyCar safety = new SafetyCar("SafetyCar", 0, (int)(pistaBitmap.getWidth() * 0.79), pistaBitmap.getHeight() / 2 - 150);
             safety.setMain(this);
             listaDeCarros.add(safety);
 
             int mid_y = pistaBitmap.getHeight() / 2;
-            int mid_x = (int)(pistaBitmap.getWidth() * 0.80);
+            int mid_x = (int)(pistaBitmap.getWidth() * 0.73);
+
+            int carrosPorLinha = 4;  // Máximo de carros por linha
+            int espacamentoHorizontal = Constants.width + 40;  // Espaço entre carros na horizontal
+            int espacamentoVertical = Constants.height + 40;   // Espaço entre carros na vertical
 
             for (int i = 0; i < numberOfCars; i++) {
-                Carro novoCarro = new Carro("Carro " + (i + 1), i+1, mid_x + i*(Constants.width + 40), mid_y);
+                int linha = i / carrosPorLinha;               // Calcula em qual linha o carro está
+                int coluna = i % carrosPorLinha;              // Calcula a posição do carro na linha
+
+                // Calcula as coordenadas x e y para o carro
+                int posX = mid_x + coluna * espacamentoHorizontal;
+                mid_x = (int) (mid_x * 0.995);
+                int posY = mid_y + linha * espacamentoVertical;
+
+                Carro novoCarro = new Carro("Carro " + (i + 1), i + 1, posX, posY);
                 novoCarro.setMain(this);
                 listaDeCarros.add(novoCarro);
             }
@@ -197,20 +249,43 @@ public class MainActivity extends AppCompatActivity implements MainToCar {
     private void startCarMovement() {
         isMoving = true; // inicializa os movimentos
 
+        startTime = SystemClock.elapsedRealtime() - accumulatedTime;
+        accumulatedTime = 0;
+
         for (Carro car : listaDeCarros) {
             car.start();
         }
 
         moveCarsRunnable = new Runnable() {
+
             @Override
             public void run() {
+                long startTimeT3 = System.currentTimeMillis();
                 PaintCars();
+
+                // Log do tempo decorrido (opcional para depuração)
+                long elapsedTime = SystemClock.elapsedRealtime() - startTime;
+                Log.d("TEMPO_CORRIDA", "Tempo decorrido: " + elapsedTime + " ms");
+
+                // Marca o fim do tempo
+                long endTimeT3 = System.currentTimeMillis();
+                long elapsedTimeT3 = endTimeT3 - startTimeT3;
+
+                Tarefas_Escalonamento.adicionarTarefa(3, elapsedTimeT3, Tarefas_Escalonamento.tarefas.size()+1);
+
+
+                // Log do tempo total
+                Log.d("TEMPO_EXECUCAO T3", "Tempo de execução T3: " + elapsedTimeT3 + " ms");
+
                 if (isMoving) {
                     handler.postDelayed(this, 100); // Atualiza a posição a cada 100ms
                 }
             }
         };
         handler.post(moveCarsRunnable);
+
+
+
     }
 
     @Override
@@ -218,6 +293,12 @@ public class MainActivity extends AppCompatActivity implements MainToCar {
         super.onPause();
         isMoving = false; // Para o movimento
         handler.removeCallbacks(moveCarsRunnable); // Remove as atualizações
+
+        accumulatedTime += SystemClock.elapsedRealtime() - startTime;
+
+        Log.d("TEMPO_DECORRIDO", "Tempo Total decorrido: " + accumulatedTime + " ms");
+
+
         for (Carro c : listaDeCarros) {
             try {
                 c.stopCar();

@@ -7,6 +7,7 @@ import android.util.Pair;
 import com.example.automath.Constants;
 import com.example.automath.Mathematics;
 import com.example.automath.interfaces.MainToCar;
+import com.example.escalonamento.Tarefas_Escalonamento;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -19,6 +20,7 @@ public class Carro implements Runnable {
     private int laps;
     private int distance;
     private int penalty;
+    private int distPercorrida;
 
     private int angulo;
     private int x;
@@ -28,6 +30,9 @@ public class Carro implements Runnable {
     protected Thread thread;
 
     private MainToCar main;
+
+    private static final double velocidadeIdeal = 4500.0/50000.0; //px/ms
+
 
     // Construtor
     public Carro(String name, Integer idCarro, Integer x, Integer y) {
@@ -92,6 +97,14 @@ public class Carro implements Runnable {
         return map;
     }
 
+    public int getDistPercorrida() {
+        return distPercorrida;
+    }
+
+    public void setDistPercorrida(int distPercorrida) {
+        this.distPercorrida = distPercorrida;
+    }
+
     public void setMain(MainToCar main) {
         this.main = main;
     }
@@ -128,11 +141,27 @@ public class Carro implements Runnable {
         Pair<Integer, Integer> p = Mathematics.getPoint(x, y, angulo, 0, distancia);
         x = p.first;
         y = p.second;
+        distPercorrida = distPercorrida + distancia;
+
+        Log.d("Distancia Percorrida", "Distancia decorrida: " + distPercorrida + " px");
     }
 
+
     private boolean estaNoSemaforo() {
+        long startTimeT2 = System.currentTimeMillis();
+
         Rect r = getRect();
         int x_semaforo = main.getPista().getWidth() / 2;
+
+        // Marca o fim do tempo
+        long endTimeT2 = System.currentTimeMillis();
+        long elapsedTimeT2 = endTimeT2 - startTimeT2;
+
+        Tarefas_Escalonamento.adicionarTarefa(2, elapsedTimeT2, Tarefas_Escalonamento.tarefas.size()+1);
+
+        // Log do tempo total
+        Log.d("TEMPO_EXECUCAO T2", "Tempo de execução T2: " + elapsedTimeT2 + " ms");
+
         return (y < (main.getPista().getHeight() / 2)) && (r.left <= x_semaforo && r.right+30 >= x_semaforo);
     }
 
@@ -182,8 +211,26 @@ public class Carro implements Runnable {
                     main.getSemaforo().release();
                 }
 
+
+                long startTimeT1 = System.currentTimeMillis();
                 checkSensor(main.getPista());
+                long endTimeT1 = System.currentTimeMillis();
+                long elapsedTimeT1 = endTimeT1 - startTimeT1;
+                // Log do tempo total
+                Tarefas_Escalonamento.adicionarTarefa(1, elapsedTimeT1, Tarefas_Escalonamento.tarefas.size()+1);
+
+
+                Log.d("TEMPO_EXECUCAO T1", "Tempo de execução T1: " + elapsedTimeT1 + " ms");
+
+                long startTimeT4 = System.currentTimeMillis();
                 andarFrente(10);
+                long endTimeT4 = System.currentTimeMillis();
+                long elapsedTimeT4 = endTimeT4 - startTimeT4;
+                Tarefas_Escalonamento.adicionarTarefa(4, elapsedTimeT4, Tarefas_Escalonamento.tarefas.size()+1);
+
+                // Log do tempo total
+                Log.d("TEMPO_EXECUCAO T4", "Tempo de execução T4: " + elapsedTimeT4 + " ms");
+
                 Thread.sleep(100);
             } catch (Exception e) {
                 Log.d("EXCEPTION", e.toString());
