@@ -11,6 +11,8 @@ import com.example.escalonamento.Tarefas_Escalonamento;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class Carro implements Runnable {
     private String name;
@@ -33,6 +35,7 @@ public class Carro implements Runnable {
 
     private static final double velocidadeIdeal = 4500.0/50000.0; //px/ms
 
+    ExecutorService executor = Executors.newSingleThreadExecutor();
 
     // Construtor
     public Carro(String name, Integer idCarro, Integer x, Integer y) {
@@ -148,21 +151,25 @@ public class Carro implements Runnable {
 
 
     private boolean estaNoSemaforo() {
-        long startTimeT2 = System.currentTimeMillis();
+        executor.submit(() -> {
 
-        Rect r = getRect();
-        int x_semaforo = main.getPista().getWidth() / 2;
+            long startTimeT2 = System.currentTimeMillis();
 
-        // Marca o fim do tempo
-        long endTimeT2 = System.currentTimeMillis();
-        long elapsedTimeT2 = endTimeT2 - startTimeT2;
+            Rect r = getRect();
+            int x_semaforo = main.getPista().getWidth() / 2;
 
-        Tarefas_Escalonamento.adicionarTarefa(2, elapsedTimeT2, Tarefas_Escalonamento.tarefas.size()+1);
+            // Marca o fim do tempo
+            long endTimeT2 = System.currentTimeMillis();
+            long elapsedTimeT2 = endTimeT2 - startTimeT2;
 
-        // Log do tempo total
-        Log.d("TEMPO_EXECUCAO T2", "Tempo de execução T2: " + elapsedTimeT2 + " ms");
+            Tarefas_Escalonamento.adicionarTarefa(2, elapsedTimeT2, Tarefas_Escalonamento.tarefas.size() + 1);
 
-        return (y < (main.getPista().getHeight() / 2)) && (r.left <= x_semaforo && r.right+30 >= x_semaforo);
+            // Log do tempo total
+            Log.d("TEMPO_EXECUCAO T2", "Tempo de execução T2: " + elapsedTimeT2 + " ms");
+
+            return (y < (main.getPista().getHeight() / 2)) && (r.left <= x_semaforo && r.right + 30 >= x_semaforo);
+        });
+        return false;
     }
 
     public int getAngulo() {
@@ -211,25 +218,26 @@ public class Carro implements Runnable {
                     main.getSemaforo().release();
                 }
 
+                executor.submit(() -> {
+                    long startTimeT1 = System.currentTimeMillis();
+                    checkSensor(main.getPista());
+                    long endTimeT1 = System.currentTimeMillis();
+                    long elapsedTimeT1 = endTimeT1 - startTimeT1;
+                    // Log do tempo total
+                    Tarefas_Escalonamento.adicionarTarefa(1, elapsedTimeT1, Tarefas_Escalonamento.tarefas.size()+1);
 
-                long startTimeT1 = System.currentTimeMillis();
-                checkSensor(main.getPista());
-                long endTimeT1 = System.currentTimeMillis();
-                long elapsedTimeT1 = endTimeT1 - startTimeT1;
-                // Log do tempo total
-                Tarefas_Escalonamento.adicionarTarefa(1, elapsedTimeT1, Tarefas_Escalonamento.tarefas.size()+1);
 
+                    Log.d("TEMPO_EXECUCAO T1", "Tempo de execução T1: " + elapsedTimeT1 + " ms");
 
-                Log.d("TEMPO_EXECUCAO T1", "Tempo de execução T1: " + elapsedTimeT1 + " ms");
+                    long startTimeT4 = System.currentTimeMillis();
+                    andarFrente(10);
+                    long endTimeT4 = System.currentTimeMillis();
+                    long elapsedTimeT4 = endTimeT4 - startTimeT4;
+                    Tarefas_Escalonamento.adicionarTarefa(4, elapsedTimeT4, Tarefas_Escalonamento.tarefas.size()+1);
 
-                long startTimeT4 = System.currentTimeMillis();
-                andarFrente(10);
-                long endTimeT4 = System.currentTimeMillis();
-                long elapsedTimeT4 = endTimeT4 - startTimeT4;
-                Tarefas_Escalonamento.adicionarTarefa(4, elapsedTimeT4, Tarefas_Escalonamento.tarefas.size()+1);
-
-                // Log do tempo total
-                Log.d("TEMPO_EXECUCAO T4", "Tempo de execução T4: " + elapsedTimeT4 + " ms");
+                    // Log do tempo total
+                    Log.d("TEMPO_EXECUCAO T4", "Tempo de execução T4: " + elapsedTimeT4 + " ms");
+                });
 
                 Thread.sleep(100);
             } catch (Exception e) {

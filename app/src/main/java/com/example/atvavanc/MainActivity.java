@@ -51,6 +51,9 @@ public class MainActivity extends AppCompatActivity implements MainToCar {
     private Bitmap dataBitmap;
     private Bitmap carroBmp; // Bitmap da pista
 
+    private ExecutorService executor = Executors.newSingleThreadExecutor();
+
+
     Semaphore semaforo = new Semaphore(1);
 
     @Override
@@ -133,49 +136,50 @@ public class MainActivity extends AppCompatActivity implements MainToCar {
     }
 
     private void PaintCars() {
-        long startTimeT5 = System.currentTimeMillis();
 
+        executor.submit(() -> {
 
-        Bitmap bitmap = pistaBitmap.copy(pistaBitmap.getConfig(), true);
-        dataBitmap =  pistaBitmap.copy(pistaBitmap.getConfig(), true);
-        Bitmap car = carroBmp.copy(carroBmp.getConfig(), true);
+            long startTimeT5 = System.currentTimeMillis();
 
-        Canvas canvas = new Canvas(bitmap);
-        Canvas dataCanvas = new Canvas(dataBitmap);
-        Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            Bitmap bitmap = pistaBitmap.copy(pistaBitmap.getConfig(), true);
+            dataBitmap =  pistaBitmap.copy(pistaBitmap.getConfig(), true);
+            Bitmap car = carroBmp.copy(carroBmp.getConfig(), true);
 
-        for (Carro c : listaDeCarros) {
-            Rect rect  = c.getRect();
-            paint.setColor(Color.BLACK);
+            Canvas canvas = new Canvas(bitmap);
+            Canvas dataCanvas = new Canvas(dataBitmap);
+            Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
 
-            canvas.rotate(c.getAngulo(), c.getX(), c.getY());
-            canvas.drawBitmap(car, null, rect, paint);
-            canvas.rotate(-c.getAngulo(), c.getX(), c.getY());
+            for (Carro c : listaDeCarros) {
+                Rect rect  = c.getRect();
+                paint.setColor(Color.BLACK);
 
-            dataCanvas.rotate(c.getAngulo(), c.getX(), c.getY());
-            dataCanvas.drawRect(rect, paint);
-            dataCanvas.rotate(-c.getAngulo(), c.getX(), c.getY());
+                canvas.rotate(c.getAngulo(), c.getX(), c.getY());
+                canvas.drawBitmap(car, null, rect, paint);
+                canvas.rotate(-c.getAngulo(), c.getX(), c.getY());
 
-            paint.setColor(Color.RED);
-            paint.setStrokeWidth(2);
-            for (Integer s : c.getSensor().keySet()) {
-                Pair<Integer, Integer> pos = c.getSensorPoint(s);
-                if (pos != null)
-                    canvas.drawLine(c.getX(), c.getY(), pos.first, pos.second, paint);
+                dataCanvas.rotate(c.getAngulo(), c.getX(), c.getY());
+                dataCanvas.drawRect(rect, paint);
+                dataCanvas.rotate(-c.getAngulo(), c.getX(), c.getY());
+
+                paint.setColor(Color.RED);
+                paint.setStrokeWidth(2);
+                for (Integer s : c.getSensor().keySet()) {
+                    Pair<Integer, Integer> pos = c.getSensorPoint(s);
+                    if (pos != null)
+                        canvas.drawLine(c.getX(), c.getY(), pos.first, pos.second, paint);
+                }
             }
-        }
-        pista.setImageBitmap(bitmap);
+            pista.setImageBitmap(bitmap);
 
-        // Marca o fim do tempo
-        long endTimeT5 = System.currentTimeMillis();
-        long elapsedTimeT5 = endTimeT5 - startTimeT5;
+            // Marca o fim do tempo
+            long endTimeT5 = System.currentTimeMillis();
+            long elapsedTimeT5 = endTimeT5 - startTimeT5;
 
-        Tarefas_Escalonamento.adicionarTarefa(5, elapsedTimeT5, Tarefas_Escalonamento.tarefas.size()+1);
+            Tarefas_Escalonamento.adicionarTarefa(5, elapsedTimeT5, Tarefas_Escalonamento.tarefas.size()+1);
 
-        // Log do tempo total
-        Log.d("TEMPO_EXECUCAO T5", "Tempo de execução T5: " + elapsedTimeT5 + " ms");
-
-
+            // Log do tempo total
+            Log.d("TEMPO_EXECUCAO T5", "Tempo de execução T5: " + elapsedTimeT5 + " ms");
+        });
     }
 
 
@@ -257,25 +261,28 @@ public class MainActivity extends AppCompatActivity implements MainToCar {
         }
 
         moveCarsRunnable = new Runnable() {
-
             @Override
             public void run() {
-                long startTimeT3 = System.currentTimeMillis();
-                PaintCars();
+                executor.submit(() -> {
 
-                // Log do tempo decorrido (opcional para depuração)
-                long elapsedTime = SystemClock.elapsedRealtime() - startTime;
-                Log.d("TEMPO_CORRIDA", "Tempo decorrido: " + elapsedTime + " ms");
+                    long startTimeT3 = System.currentTimeMillis();
+                    PaintCars();
 
-                // Marca o fim do tempo
-                long endTimeT3 = System.currentTimeMillis();
-                long elapsedTimeT3 = endTimeT3 - startTimeT3;
+                    // Log do tempo decorrido (opcional para depuração)
+                    long elapsedTime = SystemClock.elapsedRealtime() - startTime;
+                    Log.d("TEMPO_CORRIDA", "Tempo decorrido: " + elapsedTime + " ms");
 
-                Tarefas_Escalonamento.adicionarTarefa(3, elapsedTimeT3, Tarefas_Escalonamento.tarefas.size()+1);
+                    // Marca o fim do tempo
+                    long endTimeT3 = System.currentTimeMillis();
+                    long elapsedTimeT3 = endTimeT3 - startTimeT3;
+
+                    Tarefas_Escalonamento.adicionarTarefa(3, elapsedTimeT3, Tarefas_Escalonamento.tarefas.size()+1);
 
 
-                // Log do tempo total
-                Log.d("TEMPO_EXECUCAO T3", "Tempo de execução T3: " + elapsedTimeT3 + " ms");
+                    // Log do tempo total
+                    Log.d("TEMPO_EXECUCAO T3", "Tempo de execução T3: " + elapsedTimeT3 + " ms");
+
+                });
 
                 if (isMoving) {
                     handler.postDelayed(this, 100); // Atualiza a posição a cada 100ms
@@ -283,8 +290,6 @@ public class MainActivity extends AppCompatActivity implements MainToCar {
             }
         };
         handler.post(moveCarsRunnable);
-
-
 
     }
 
